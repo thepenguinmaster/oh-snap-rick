@@ -1,0 +1,153 @@
+name: snap_rick_app
+version: '1.3.6'
+summary: Coffee Kiosk system
+description: |
+  Plays a video
+base: core18
+confinement: strict
+grade: devel
+
+architectures:
+  - build-on: amd64
+    run-on: armv7l
+
+
+apps:
+  snap_rick_app:
+    command: desktop-launch xwayland-kiosk-launch "$SNAP/snap_rick_app/snap_rick_app" "--no-sandbox"
+    environment:
+      NODE_CONFIG_DIR: $SNAP_DATA/snap_rick_app/config/
+      ELECTRON_ENABLE_LOGGING: 1
+      ENVIRONMENT: production
+    plugs:
+    - browser-support
+    - opengl
+    - pulseaudio
+    - wayland
+
+  daemon:
+    daemon: simple
+    restart-condition: always
+    command: desktop-launch xwayland-kiosk-launch "$SNAP/snap_rick_app/snap_rick_app" "--no-sandbox"
+    plugs:
+    - browser-support
+    - network
+    - network-bind
+    - network-control
+    - network-manager
+    - process-control
+    - opengl
+    - pulseaudio
+    - wayland
+
+environment:
+  XWAYLAND_FULLSCREEN_WINDOW_HINT: window_role="browser-window"
+  NODE_CONFIG_DIR: $SNAP_DATA/snap_rick_app/config/
+parts:
+  node:
+    plugin: dump
+    source: https://nodejs.org/download/release/v12.18.4/node-v12.18.4-linux-armv7l.tar.gz
+  snap_rick_app:
+    plugin: nodejs
+    nodejs-version: 12.18.2
+    nodejs-package-manager: npm
+    source: snap_rick_app
+    source-type: local
+    after: [desktop-gtk3, xwayland-kiosk-helper]
+    override-build: |
+        case $SNAPCRAFT_ARCH_TRIPLET in
+          "i386-linux-gnu") ARCH="ia32";;
+          "x86_64-linux-gnu") ARCH="x64";;
+          "arm-linux-gnueabihf") ARCH="armv7l";;
+          "aarch64-linux-gnu") ARCH="arm64";;
+          *) echo "ERROR: electron does not support the '$SNAPCRAFT_ARCH_TRIPLET' architecture" && exit 1;;
+        esac
+
+        echo "Using '$SNAPCRAFT_ARCH_TRIPLET' architecture"
+        
+        export NODE_CONFIG_DIR=$SNAP_COMMON/config/
+        export ELECTRON_ENABLE_LOGGING=1
+
+        mkdir -p $SNAP_COMMON/update/
+        mkdir -p $SNAP_COMMON/config/
+        mkdir -p $SNAP_COMMON/assets/
+
+        rm -rf $SNAPCRAFT_PART_BUILD/snap_rick_app-linux-$ARCH
+        rm -rf $SNAPCRAFT_PART_INSTALL/snap_rick_app
+        rm -rf $SNAPCRAFT_PART_BUILD/snap_rick_app
+        rm -rf $SNAPCRAFT_PART_SRC/build
+        rm -rf $SNAPCRAFT_PART_BUILD/build
+
+
+        PATH=$PATH:$SNAPCRAFT_PART_SRC/../npm/bin
+        echo "path set"
+        npm config set unsafe-perm True
+        echo "set unsafe"
+        # workaround for build.snapcraft.io builds https://bugs.launchpad.net/bugs/1886861
+        if [ -n "$http_proxy" ]; then
+          export ELECTRON_GET_USE_PROXY=1
+          export GLOBAL_AGENT_HTTP_PROXY="${http_proxy}"
+          export GLOBAL_AGENT_HTTPS_PROXY="${http_proxy}"
+        fi
+        echo "install start"
+        #npm install 
+        npm install --target_arch=armhf --target_platform=linux
+        npm install electron
+        npm install electron-packager
+
+        npm run build
+
+        ./node_modules/.bin/electron-packager . --overwrite --platform=linux --arch=$ARCH --output=release-build --prune=true 
+        cp -v -R ./snap_rick_app-linux-$ARCH $SNAPCRAFT_PART_INSTALL/snap_rick_app
+    stage-packages:
+    - libasound2
+    - libgconf-2-4
+    - libnss3
+    - libx11-xcb1
+    - libxss1
+    - libxtst6
+    build-packages:
+    #- nodejs
+    - npm
+    - unzip
+    build-snaps:
+      - node/12/stable
+  # Adapted from snapcraft-desktop-helpers https://github.com/ubuntu/snapcraft-desktop-helpers/blob/master/snapcraft.yaml#L183
+  desktop-gtk3:
+    source: https://github.com/ubuntu/snapcraft-desktop-helpers.git
+    source-subdir: gtk
+    plugin: make
+    make-parameters: ["FLAVOR=gtk3"]
+    build-packages:
+      - build-essential
+      - libgtk-3-dev
+    stage-packages:
+      - libxkbcommon0  # XKB_CONFIG_ROOT
+      - ttf-ubuntu-font-family
+      - dmz-cursor-theme
+      - light-themes
+      - adwaita-icon-theme
+      - gnome-themes-standard
+      - shared-mime-info
+      - libgtk-3-0
+      - libgdk-pixbuf2.0-0
+      - libglib2.0-bin
+      - libgtk-3-bin
+      - unity-gtk3-module
+      - libappindicator3-1
+      - locales-all
+      - xdg-user-dirs
+      - ibus-gtk3
+      - libibus-1.0-5
+
+  xwayland-kiosk-helper:
+    plugin: cmake
+    source: https://github.com/MirServer/xwayland-kiosk-helper.git
+    build-packages: [ build-essential ]
+    stage-packages: [ xwayland, i3, libegl1-mesa, libgl1-mesa-glx ]
+
+layout:
+  /etc/cosnap_rick_app/config:
+    bind: $SNAP_COMMON/config
+  /var/snap_rick_app/assets:
+    bind: $SNAP_COMMON/assets

@@ -1,0 +1,44 @@
+{
+  "name": "snap_rick",
+  "version": "1.0.0",
+  "description": "OhSnapRick",
+  "main": "build/main.js",
+  "scripts": {
+    "compile": "./node_modules/.bin/tsc",
+    "compile_win": ".\\node_modules\\.bin\\tsc",
+    "copy": "copyfiles --verbose --up 2 --exclude \"**/*.ts\" \"src/renderer/**/*\" build/renderer/",
+    "build": "npm run compile && npm run copy",
+    "build_win": "npm run compile_win && npm run copy",
+    "launchElectron": "electron ./",
+    "start": "npm run build && npm run launchElectron",
+    "start_win": "npm run build_win && npm run launchElectron"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/thepenguinmaster/oh-snap-rick.git"
+  },
+  "author": "Robert Lisiecki",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/thepenguinmaster/oh-snap-rick/issues"
+  },
+  "homepage": "https://github.com/thepenguinmaster/oh-snap-rick#readme",
+  "devDependencies": {
+    "electron": "^15.1.2",
+    "ts-loader": "^9.2.3",
+    "@types/electron": "^1.6.10",
+    "@types/jquery": "^3.5.5"
+  },
+  "dependencies": {
+    "@popperjs/core": "^2.9.2",
+    "@types/node": "^16.0.0",
+    "bootstrap": "^5.0.1",
+    "bootstrap-icons": "^1.5.0",
+    "bootstrap-select": "^1.13.18",
+    "http": "^0.0.1-security",
+    "popper.js": "^1.16.1",
+    "typescript": "^4.3.4",
+    "copyfiles": "^2.4.1",
+    "jquery": "^3.6.0"
+  }
+}
